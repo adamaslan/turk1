@@ -2,9 +2,13 @@
 import { useState } from 'react';
 import { Download, Volume2, Copy, AlertCircle, CheckCircle, Loader, Moon, Sun } from 'lucide-react';
 
-interface TranslationResult {
+interface PhrasePair {
   original: string;
   translated: string;
+}
+
+interface TranslationResult {
+  phrasePairs: PhrasePair[];
   sourceLang: string;
   targetLang: string;
 }
@@ -20,13 +24,14 @@ export default function Home() {
   const [text, setText] = useState('');
   const [sourceLang, setSourceLang] = useState('en');
   const [targetLang, setTargetLang] = useState('tr');
+  const [delimiter, setDelimiter] = useState('/');
   const [darkMode, setDarkMode] = useState(true);
 
   const [result, setResult] = useState<TranslationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [audioLoading, setAudioLoading] = useState<'source' | 'target' | null>(null);
-  const [copied, setCopied] = useState<'source' | 'target' | null>(null);
+  const [audioLoading, setAudioLoading] = useState<number | 'all' | null>(null);
+  const [copied, setCopied] = useState<number | null>(null);
 
   const swapLanguages = () => {
     setSourceLang(targetLang);
@@ -34,8 +39,10 @@ export default function Home() {
     if (result) {
       setResult({
         ...result,
-        original: result.translated,
-        translated: result.original,
+        phrasePairs: result.phrasePairs.map(pair => ({
+          original: pair.translated,
+          translated: pair.original,
+        })),
         sourceLang: targetLang,
         targetLang: sourceLang,
       });
@@ -66,7 +73,7 @@ export default function Home() {
           text: text.trim(),
           sourceLang,
           targetLang,
-          delimiter: '|||SINGLE|||' // Won't split since it's a single phrase
+          delimiter: delimiter.trim() || ','
         }),
       });
 
@@ -76,16 +83,7 @@ export default function Home() {
       }
 
       const data = await res.json();
-
-      // Extract first phrase pair for single translation
-      if (data.phrasePairs && data.phrasePairs.length > 0) {
-        setResult({
-          original: data.phrasePairs[0].original,
-          translated: data.phrasePairs[0].translated,
-          sourceLang: data.sourceLang,
-          targetLang: data.targetLang,
-        });
-      }
+      setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       setResult(null);
@@ -94,24 +92,24 @@ export default function Home() {
     }
   };
 
-  const handlePlayAudio = async (type: 'source' | 'target') => {
+  const handlePlayAudio = async (index: number) => {
     if (!result) return;
 
-    setAudioLoading(type);
+    setAudioLoading(index);
     try {
-      const textToSpeak = type === 'source' ? result.original : result.translated;
-      const lang = type === 'source' ? result.sourceLang : result.targetLang;
+      const pair = result.phrasePairs[index];
 
       // Use POST for audio (returns binary blob)
+      // Send just this one phrase to get both original + translation audio
       const res = await fetch('/api/v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: textToSpeak,
-          sourceLang: lang,
-          targetLang: lang, // Same language for single audio
-          delimiter: '|||SINGLE|||',
-          pauseDuration: 0
+          text: pair.original,
+          sourceLang: result.sourceLang,
+          targetLang: result.targetLang,
+          delimiter: '|||UNIQUE_SINGLE|||', // Won't split
+          pauseDuration: 800
         }),
       });
 
@@ -133,9 +131,49 @@ export default function Home() {
     }
   };
 
-  const handleCopyText = (text: string, type: 'source' | 'target') => {
-    navigator.clipboard.writeText(text);
-    setCopied(type);
+  const handlePlayAllAudio = async () => {
+    if (!result) return;
+
+    setAudioLoading('all');
+    try {
+      // Send all phrases with the user's delimiter
+      const allText = result.phrasePairs.map(p => p.original).join(delimiter.trim() || ',');
+
+      const res = await fetch('/api/v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: allText,
+          sourceLang: result.sourceLang,
+          targetLang: result.targetLang,
+          delimiter: delimiter.trim() || ',',
+          pauseDuration: 800
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Audio generation failed');
+      }
+
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audio.onended = () => URL.revokeObjectURL(audioUrl);
+      await audio.play();
+    } catch (err) {
+      setError('Failed to generate audio');
+    } finally {
+      setAudioLoading(null);
+    }
+  };
+
+  const handleCopyText = (index: number) => {
+    if (!result) return;
+    const pair = result.phrasePairs[index];
+    const textToCopy = `${pair.original}\n${pair.translated}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(index);
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -143,15 +181,17 @@ export default function Home() {
     if (!result) return;
 
     try {
-      // Generate combined audio with both original and translation
+      // Generate combined audio with all phrases
+      const allText = result.phrasePairs.map(p => p.original).join(delimiter.trim() || ',');
+
       const res = await fetch('/api/v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: result.original,
+          text: allText,
           sourceLang: result.sourceLang,
           targetLang: result.targetLang,
-          delimiter: '|||SINGLE|||',
+          delimiter: delimiter.trim() || ',',
           pauseDuration: 800
         }),
       });
@@ -177,7 +217,7 @@ export default function Home() {
 
     const rows = [
       ['Original', 'Translation'],
-      [result.original, result.translated],
+      ...result.phrasePairs.map(pair => [pair.original, pair.translated])
     ];
 
     const csv = rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -263,17 +303,37 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Delimiter Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Phrase Delimiter (separate multiple phrases)
+              </label>
+              <input
+                type="text"
+                value={delimiter}
+                onChange={(e) => setDelimiter(e.target.value)}
+                placeholder="e.g., / or , or $$"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Example: "hello / goodbye / thank you" with delimiter "/"
+              </p>
+            </div>
+
             {/* Input Text Area */}
             <div className="mb-8">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Text to translate</label>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Enter the text you want to translate and hear pronounced..."
+                placeholder={`Enter text to translate... Use "${delimiter}" to separate multiple phrases`}
                 className="w-full px-4 py-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none"
                 rows={4}
               />
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{text.length} characters</p>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                {text.length} characters
+                {text.includes(delimiter.trim()) && ` • ${text.split(delimiter).filter(p => p.trim()).length} phrases`}
+              </p>
             </div>
 
             {/* Translate Button */}
@@ -288,7 +348,7 @@ export default function Home() {
                   Translating...
                 </>
               ) : (
-                'Translate & Compare'
+                'Translate'
               )}
             </button>
 
@@ -301,78 +361,81 @@ export default function Home() {
             )}
 
             {/* Results Section */}
-            {result && (
+            {result && result.phrasePairs.length > 0 && (
               <div className="mt-8 space-y-6 border-t border-gray-200 dark:border-gray-700 pt-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Original Text */}
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {LANGUAGES[result.sourceLang as keyof typeof LANGUAGES].flag} Original
-                      </h3>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handlePlayAudio('source')}
-                          disabled={audioLoading === 'source'}
-                          className="p-2 hover:bg-white dark:hover:bg-gray-600 rounded-lg transition disabled:opacity-50"
-                          title="Play pronunciation"
-                        >
-                          {audioLoading === 'source' ? (
-                            <Loader className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
-                          ) : (
-                            <Volume2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleCopyText(result.original, 'source')}
-                          className="p-2 hover:bg-white dark:hover:bg-gray-600 rounded-lg transition"
-                          title="Copy text"
-                        >
-                          {copied === 'source' ? (
-                            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-gray-800 dark:text-gray-200 text-lg leading-relaxed">{result.original}</p>
-                  </div>
+                {/* Play All Button */}
+                {result.phrasePairs.length > 1 && (
+                  <button
+                    onClick={handlePlayAllAudio}
+                    disabled={audioLoading !== null}
+                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    {audioLoading === 'all' ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Playing...
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-5 h-5" />
+                        Play All Phrases
+                      </>
+                    )}
+                  </button>
+                )}
 
-                  {/* Translated Text */}
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {LANGUAGES[result.targetLang as keyof typeof LANGUAGES].flag} Translation
-                      </h3>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handlePlayAudio('target')}
-                          disabled={audioLoading === 'target'}
-                          className="p-2 hover:bg-white dark:hover:bg-indigo-800 rounded-lg transition disabled:opacity-50"
-                          title="Play pronunciation"
-                        >
-                          {audioLoading === 'target' ? (
-                            <Loader className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400" />
-                          ) : (
-                            <Volume2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleCopyText(result.translated, 'target')}
-                          className="p-2 hover:bg-white dark:hover:bg-indigo-800 rounded-lg transition"
-                          title="Copy text"
-                        >
-                          {copied === 'target' ? (
-                            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                          )}
-                        </button>
+                {/* Phrase Pairs */}
+                <div className="space-y-4">
+                  {result.phrasePairs.map((pair, index) => (
+                    <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-3">
+                          {/* Original */}
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              {LANGUAGES[result.sourceLang as keyof typeof LANGUAGES].flag} Original
+                            </div>
+                            <p className="text-gray-900 dark:text-gray-100">{pair.original}</p>
+                          </div>
+
+                          {/* Translation */}
+                          <div>
+                            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              {LANGUAGES[result.targetLang as keyof typeof LANGUAGES].flag} Translation
+                            </div>
+                            <p className="text-indigo-700 dark:text-indigo-300 font-medium">{pair.translated}</p>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handlePlayAudio(index)}
+                            disabled={audioLoading !== null}
+                            className="p-2 hover:bg-white dark:hover:bg-gray-600 rounded-lg transition disabled:opacity-50"
+                            title="Play this phrase pair"
+                          >
+                            {audioLoading === index ? (
+                              <Loader className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
+                            ) : (
+                              <Volume2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleCopyText(index)}
+                            className="p-2 hover:bg-white dark:hover:bg-gray-600 rounded-lg transition"
+                            title="Copy both texts"
+                          >
+                            {copied === index ? (
+                              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            ) : (
+                              <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <p className="text-gray-800 dark:text-gray-200 text-lg leading-relaxed">{result.translated}</p>
-                  </div>
+                  ))}
                 </div>
 
                 {/* Download Buttons */}
