@@ -12,12 +12,7 @@ const ttsClient = new textToSpeech.TextToSpeechClient({
     keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
 });
 
-const getProjectId = async () => {
-    const client = new v3.TranslationServiceClient({
-        keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
-    });
-    return await client.getProjectId();
-};
+const projectIdPromise = translateClient.getProjectId();
 
 const voiceMap: Record<string, { code: string; name: string }> = {
     en: { code: 'en-US', name: 'en-US-Neural2-F' },
@@ -121,7 +116,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const projectId = await getProjectId();
+        const projectId = await projectIdPromise;
 
         const [transResponse] = await translateClient.translateText({
             parent: `projects/${projectId}/locations/global`,
@@ -192,7 +187,7 @@ export async function PUT(req: Request) {
         }
 
         const phrases = text.split(delimiter).map((p: string) => p.trim()).filter(Boolean);
-        const projectId = await getProjectId();
+        const projectId = await projectIdPromise;
 
         const [transResponse] = await translateClient.translateText({
             parent: `projects/${projectId}/locations/global`,
