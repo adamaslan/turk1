@@ -249,7 +249,7 @@ export default function Home() {
             </button>
 
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent mb-2">
-              Polyglot Translator
+              Adam's Real Good Translator
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Translate text and hear it spoken in multiple languages
@@ -332,7 +332,7 @@ export default function Home() {
               />
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 {text.length} characters
-                {text.includes(delimiter.trim()) && ` • ${text.split(delimiter).filter(p => p.trim()).length} phrases`}
+                {delimiter.trim() && text.includes(delimiter.trim()) && ` • ${text.split(delimiter.trim()).filter(p => p.trim()).length} phrases`}
               </p>
             </div>
 
