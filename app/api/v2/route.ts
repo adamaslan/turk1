@@ -4,13 +4,26 @@ import textToSpeech from '@google-cloud/text-to-speech';
 
 export const maxDuration = 60;
 
-const translateClient = new v3.TranslationServiceClient({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
-});
+// Minimal credentials helper - supports both local file and Vercel env var
+function getGoogleCredentials() {
+    // Vercel: Use base64-encoded JSON from environment variable
+    if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+        const jsonString = Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf-8');
+        return JSON.parse(jsonString);
+    }
+    // Local: Use file path (returns undefined to let SDK use keyFilename)
+    return undefined;
+}
 
-const ttsClient = new textToSpeech.TextToSpeechClient({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
-});
+const credentials = getGoogleCredentials();
+
+const translateClient = credentials
+    ? new v3.TranslationServiceClient({ credentials })
+    : new v3.TranslationServiceClient({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
+
+const ttsClient = credentials
+    ? new textToSpeech.TextToSpeechClient({ credentials })
+    : new textToSpeech.TextToSpeechClient({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
 
 const projectIdPromise = translateClient.getProjectId();
 
@@ -56,7 +69,7 @@ function decodeHtmlEntities(text: string): string {
 // Helper to generate speech for a single phrase
 async function generateSpeech(text: string, languageCode: string): Promise<Buffer> {
     const [audio] = await ttsClient.synthesizeSpeech({
-        input: { text: decodeHtmlEntities(text) }, // Decode before TTS
+        input: { text: decodeHtmlEntities(text) },
         voice: {
             languageCode: voiceMap[languageCode].code,
             name: voiceMap[languageCode].name,
@@ -131,7 +144,7 @@ export async function POST(req: Request) {
 
         for (let i = 0; i < phrases.length; i++) {
             const original = phrases[i];
-            const translated = decodeHtmlEntities(translations[i]?.translatedText || ''); // Decode here
+            const translated = decodeHtmlEntities(translations[i]?.translatedText || '');
 
             const originalAudio = await generateSpeech(original, sourceLang);
             audioBuffers.push(originalAudio);
@@ -199,7 +212,7 @@ export async function PUT(req: Request) {
         const translations = transResponse.translations || [];
         const phrasePairs = phrases.map((original: string, i: number) => ({
             original,
-            translated: decodeHtmlEntities(translations[i]?.translatedText || ''), // Decode here too
+            translated: decodeHtmlEntities(translations[i]?.translatedText || ''),
         }));
 
         return NextResponse.json({
