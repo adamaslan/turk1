@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Download, Volume2, Copy, AlertCircle, CheckCircle, Loader, Moon, Sun } from 'lucide-react';
+import { Download, Volume2, Copy, AlertCircle, CheckCircle, Loader, Moon, Sun, FileText } from 'lucide-react';
 
 interface PhrasePair {
   original: string;
@@ -230,6 +230,21 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const [podcastCopied, setPodcastCopied] = useState(false);
+
+  const handleCopyPodcastFormat = () => {
+    if (!result) return;
+
+    const blocks = result.phrasePairs.map((pair, index) =>
+      `${index + 1}. Original: ${pair.original}\n   Translation: ${pair.translated}`
+    );
+    const podcastText = blocks.join('\n\n');
+
+    navigator.clipboard.writeText(podcastText);
+    setPodcastCopied(true);
+    setTimeout(() => setPodcastCopied(false), 2000);
+  };
+
   return (
     <div className={darkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-200">
@@ -439,7 +454,7 @@ export default function Home() {
                 </div>
 
                 {/* Download Buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <button
                     onClick={handleDownloadAudio}
                     className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
@@ -454,6 +469,23 @@ export default function Home() {
                   >
                     <Download className="w-5 h-5" />
                     Download as CSV
+                  </button>
+
+                  <button
+                    onClick={handleCopyPodcastFormat}
+                    className="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    {podcastCopied ? (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-5 h-5" />
+                        Copy for Podcast
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
