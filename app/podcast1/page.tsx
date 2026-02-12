@@ -276,10 +276,24 @@ export default function FrenchPodcastApp() {
     const handleCopyPodcastFormat = () => {
         if (!result) return;
 
-        const blocks = result.phrasePairs.map((pair, index) =>
-            `${index + 1}. ${pair.original} $$ ${pair.translated}`
+        // Get episode title if it's the first phrase
+        const firstPair = result.phrasePairs[0];
+        const isEpisodeTitle = firstPair.original.toLowerCase().includes('episode');
+
+        // Build the formatted text
+        let podcastText = '';
+
+        // Add episode header if first phrase is an episode title
+        if (isEpisodeTitle) {
+            podcastText = `**${firstPair.original} — ${firstPair.translated}**\n\n`;
+        }
+
+        // Add all phrases as numbered list with em dash separator
+        const numberedList = result.phrasePairs.map((pair, index) =>
+            `${index + 1}. ${pair.original} — ${pair.translated}`
         );
-        const podcastText = blocks.join('\n');
+
+        podcastText += numberedList.join('\n');
 
         navigator.clipboard.writeText(podcastText);
         setPodcastCopied(true);
@@ -639,7 +653,7 @@ export default function FrenchPodcastApp() {
                                         ) : (
                                             <>
                                                 <FileText className="w-5 h-5" />
-                                                Copy Episode Format
+                                                Copy Numbered List
                                             </>
                                         )}
                                     </button>
