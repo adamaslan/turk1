@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { v3 } from '@google-cloud/translate';
+import { v2 } from '@google-cloud/translate';
 import textToSpeech from '@google-cloud/text-to-speech';
 
 export const maxDuration = 60;
@@ -16,14 +16,12 @@ function getGoogleCredentials() {
 const credentials = getGoogleCredentials();
 
 const translateClient = credentials
-    ? new v3.TranslationServiceClient({ credentials })
-    : new v3.TranslationServiceClient({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
+    ? new v2.Translate({ credentials })
+    : new v2.Translate({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
 
 const ttsClient = credentials
     ? new textToSpeech.TextToSpeechClient({ credentials })
     : new textToSpeech.TextToSpeechClient({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
-
-const projectIdPromise = translateClient.getProjectId();
 
 // Enhanced voice map with multiple voice options
 const voiceMap: Record<string, { code: string; name: string; alternates?: string[] }> = {
@@ -132,9 +130,18 @@ export async function POST(req: Request) {
             mode = 'standard' // 'standard', 'immersion', 'drill'
         } = await req.json();
 
+        const MAX_TEXT_LENGTH = 3000
+
         if (!text?.trim() || !sourceLang || !targetLang) {
             return NextResponse.json(
                 { error: 'Missing or invalid required fields' },
+                { status: 400 }
+            );
+        }
+
+        if (text.length > MAX_TEXT_LENGTH) {
+            return NextResponse.json(
+                { error: `Text too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.` },
                 { status: 400 }
             );
         }
@@ -155,21 +162,17 @@ export async function POST(req: Request) {
             );
         }
 
-        const projectId = await projectIdPromise;
-
-        const [transResponse] = await translateClient.translateText({
-            parent: `projects/${projectId}/locations/global`,
-            contents: phrases,
-            sourceLanguageCode: sourceLang,
-            targetLanguageCode: targetLang,
+        const [rawTranslations] = await translateClient.translate(phrases, {
+            from: sourceLang,
+            to: targetLang,
         });
+        const translatedPhrases = Array.isArray(rawTranslations) ? rawTranslations : [rawTranslations];
 
-        const translations = transResponse.translations || [];
         const audioBuffers: Buffer[] = [];
 
         for (let i = 0; i < phrases.length; i++) {
             const original = phrases[i];
-            const translated = decodeHtmlEntities(translations[i]?.translatedText || '');
+            const translated = decodeHtmlEntities(translatedPhrases[i] || '');
 
             // Different modes for different learning styles
             if (mode === 'immersion') {
@@ -259,9 +262,18 @@ export async function PUT(req: Request) {
     try {
         const { text, sourceLang, targetLang, delimiter = ',' } = await req.json();
 
+        const MAX_TEXT_LENGTH = 3000
+
         if (!text?.trim() || !sourceLang || !targetLang) {
             return NextResponse.json(
                 { error: 'Missing or invalid required fields' },
+                { status: 400 }
+            );
+        }
+
+        if (text.length > MAX_TEXT_LENGTH) {
+            return NextResponse.json(
+                { error: `Text too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.` },
                 { status: 400 }
             );
         }
@@ -274,19 +286,16 @@ export async function PUT(req: Request) {
         }
 
         const phrases = text.split(delimiter).map((p: string) => p.trim()).filter(Boolean);
-        const projectId = await projectIdPromise;
 
-        const [transResponse] = await translateClient.translateText({
-            parent: `projects/${projectId}/locations/global`,
-            contents: phrases,
-            sourceLanguageCode: sourceLang,
-            targetLanguageCode: targetLang,
+        const [rawTranslations] = await translateClient.translate(phrases, {
+            from: sourceLang,
+            to: targetLang,
         });
+        const translatedPhrases = Array.isArray(rawTranslations) ? rawTranslations : [rawTranslations];
 
-        const translations = transResponse.translations || [];
         const phrasePairs = phrases.map((original: string, i: number) => ({
             original,
-            translated: decodeHtmlEntities(translations[i]?.translatedText || ''),
+            translated: decodeHtmlEntities(translatedPhrases[i] || ''),
         }));
 
         return NextResponse.json({
