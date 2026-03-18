@@ -106,9 +106,18 @@ export async function POST(req: Request) {
             pauseDuration = 800
         } = await req.json();
 
+        const MAX_TEXT_LENGTH = 3000
+
         if (!text?.trim() || !sourceLang || !targetLang) {
             return NextResponse.json(
                 { error: 'Missing or invalid required fields' },
+                { status: 400 }
+            );
+        }
+
+        if (text.length > MAX_TEXT_LENGTH) {
+            return NextResponse.json(
+                { error: `Text too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.` },
                 { status: 400 }
             );
         }
@@ -185,9 +194,18 @@ export async function PUT(req: Request) {
     try {
         const { text, sourceLang, targetLang, delimiter = ',' } = await req.json();
 
+        const MAX_TEXT_LENGTH = 3000
+
         if (!text?.trim() || !sourceLang || !targetLang) {
             return NextResponse.json(
                 { error: 'Missing or invalid required fields' },
+                { status: 400 }
+            );
+        }
+
+        if (text.length > MAX_TEXT_LENGTH) {
+            return NextResponse.json(
+                { error: `Text too long. Maximum ${MAX_TEXT_LENGTH} characters allowed.` },
                 { status: 400 }
             );
         }

@@ -322,17 +322,17 @@ Each episode is a mental folder. Anchor words are high-frequency essentials you 
 - Satellite theme: Workplace vocabulary, job-hunting terms, CV/cover letter vocabulary
 - Cultural note: French work culture -- the 35-hour week, *RTT* (extra days off), *conges payes*
 
-### Episode 44 -- Le Grand Livre (The Ledger)
-*Setting: Accounting, budgeting, personal finance.*
-- Anchor words: comptabilite, bilan, recette, depense, benefice, perte, marge, chiffre, impot, declaration, deduction, amortissement, tresorerie, previsionnel, audit, fraude, transparent, reguler, excedent, deficit
-- Satellite theme: Accounting terms, tax vocabulary (*impot sur le revenu, TVA*), bookkeeping
-- Finance tie-in: Personal and business accounting -- navigating French tax declarations
+### Episode 44 -- Le Corps et le Plaisir (The Body and Pleasure)
+*Setting: Physical intimacy, the body, pleasure, and sexual health.*
+- Anchor words: nu, peau, corps, toucher, plaisir, desir, excitation, caresser, effleurer, embrasser, sensuel, erotique, intime, physique, lit, draps, lent, doux, climax, orgasme
+- Satellite theme: Intimate vocabulary, consent and safety, anatomy, physical sensation words
+- Cultural note: French frankness about sexuality -- *la sexualite* as a natural part of adult life and conversation
 
-### Episode 45 -- L'Affaire (The Deal)
-*Setting: Real estate, major purchases, contracts.*
-- Anchor words: immobilier, propriete, achat, vente, hypotheque, credit, taux, notaire, compromis, signature, estimation, superficie, renovation, quartier, emplacement, rentabilite, locataire, bail, agence, patrimoine
-- Satellite theme: Real estate vocabulary, major purchase terms, legal contract language
-- Travel tie-in: Buying or renting property in France -- the *notaire* system
+### Episode 45 -- La Chambre (The Bedroom)
+*Setting: Seduction, desire, sexual encounters, and intimate relationships.*
+- Anchor words: seduction, preliMinaires, seduire, taquiner, vouloir, desirer, abandonner, gemir, chuchoter, frissonner, sensuel, affame, passionne, interdit, secret, liaison, attirance, chimie, tension, fantasme
+- Satellite theme: Seduction vocabulary, relationship types, physical and emotional intimacy, describing encounters
+- Cultural note: The French vocabulary of love and desire -- from *draguer* to *faire l'amour*
 
 ### Episode 46 -- Le Travailleur Independant (The Hustle)
 *Setting: Side projects, freelancing, the gig economy.*
@@ -372,7 +372,7 @@ Each episode is a mental folder. Anchor words are high-frequency essentials you 
 *Setting: Woodlands, trees, forest ecosystems.*
 - Anchor words: foret, arbre, feuille, racine, branche, tronc, mousse, champignon, sentier, clairiere, ombre, canopee, biodiversite, ecosysteme, faune, flore, sauvage, proteger, randonner, refuge
 - Satellite theme: Forest vocabulary, hiking terms, tree species (*chene, hetre, pin, bouleau*)
-- Nature tie-in: *Bain de foret* (forest bathing), French national parks, *ONF* (Office National des Forets)
+- Nature tie-in: *Bain de foret* (forest bathing), French national parks, *ONF* (ye National des Forets)
 
 ### Episode 52 -- L'Ocean
 *Setting: Seas, beaches, marine life, coastal travel.*
